@@ -19,16 +19,14 @@ hyp = {'xy': 0.2,  # xy loss gain
      'weight_decay': 0.0005}  # optimizer weight decay
 
 device = select_device()
-test_set = torchvision.datasets.ImageFolder('./test_set')
-test_loader = DataLoader(test_set, batch_size=16, num_workers=0, shuffle=False, pin_memory=True)
 
-im = Image.open('test_image.jpg')
+im = Image.open('test_image1.jpg')
 im = transforms.Resize((416, 416))(im)
 im = transforms.ToTensor()(im)
 im = im.unsqueeze(0).to(device)
 print(im.shape)
 
-chkpt = torch.load('./sex', map_location=device)
+chkpt = torch.load('./weights/2019-07-27', map_location=device)
 model = YOLO_v3(BasicBlock, [1,2,8,8,4], hyp)
 model.load_state_dict(chkpt['model'])
 model.eval()

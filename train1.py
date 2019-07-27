@@ -39,7 +39,7 @@ def main_worker(gpu, ngpus_per_node, args):
     scheduler.last_epoch = start_epoch - 1
 
     # load weight
-    chkpt = torch.load('./sex', map_location=gpu)
+    chkpt = torch.load('./weights/2019-07-27', map_location=gpu)
     model.load_state_dict(chkpt['model'])
     model.eval()
     if args['distributed']:
@@ -93,6 +93,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
             # Model prediction
             pred = model(imgs)
+            print(targets)
             # Compute loss, gradient
             loss, loss_items = compute_loss(pred, targets, model, args['gpu'])
             loss.backward()
@@ -118,7 +119,7 @@ def main_worker(gpu, ngpus_per_node, args):
              'optimizer': optimizer.state_dict()}
 
     # Save latest checkpoint
-    torch.save(chkpt, './sex')
+    torch.save(chkpt, './weights/2019-07-27')
 
 
 if __name__ == '__main__':

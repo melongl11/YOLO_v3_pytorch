@@ -156,6 +156,7 @@ def build_targets(model, targets, device):
 
         layers[i][1] = torch.from_numpy(np.asarray(layers[i][1]))
         layers[i][1] = layers[i][1].to(device)
+    print("layers: ", layers)
     for i in range(len(layers)):
         layer = layers[i]
         # iou of targets-anchors
@@ -174,6 +175,7 @@ def build_targets(model, targets, device):
         # Indices
         b, c = t[:, :2].long().t()  # target image, class
         gxy = t[:, 2:4] * layer[0]  # grid x, y
+        print("test: ", gxy, t[:, 2:4], layer[0])
         gi, gj = gxy.long().t()  # grid x, y indices
         indices.append((b, a, gj, gi))
 
@@ -196,15 +198,16 @@ def compute_loss(p, targets, model, device):  # predictions, targets, model
     lxy, lwh, lcls, lconf = ft([0]), ft([0]), ft([0]), ft([0])
     txy, twh, tcls, indices = build_targets(model, targets, device)
 
+
     # Define criteria
     MSE = nn.MSELoss()
-    CE = nn.CrossEntropyLoss()  # (weight=model.class_weights)
-    BCE = nn.BCEWithLogitsLoss()
+    BCEcls = nn.BCEWithLogitsLoss()  # (weight=model.class_weights)
+    BCEobj = nn.BCEWithLogitsLoss()
     # Compute losses
     h = model.hyp  # hyperparameters
     bs = p[0].shape[0]  # batch size
     k = bs  # loss gain
-    for i, pi0 in enumerate(p):  # layer i predictions, i
+    for i, pi0 in enumerate(p):  # layer i predictions,
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
         tconf = torch.zeros_like(pi0[..., 0])  # conf
 
@@ -214,14 +217,15 @@ def compute_loss(p, targets, model, device):  # predictions, targets, model
             tconf[b, a, gj, gi] = 1  # conf
             # pi[..., 2:4] = torch.sigmoid(pi[..., 2:4])  # wh power loss (uncomment)
             twh[i] = twh[i].float()
-            tcls[i] = tcls[i].long()
+            tclsm = torch.zeros_like(pi[..., 5:])
+            tclsm[range(len(b)), tcls[i]] = 1.0
             lxy += (k * h['xy']) * MSE(torch.sigmoid(pi[..., 0:2]), txy[i])  # xy loss
             lwh += (k * h['wh']) * MSE(pi[..., 2:4], twh[i])  # wh yolo loss
-            lcls += (k * h['cls']) * CE(pi[..., 5:], tcls[i])  # class_conf loss
+            lcls += (k * h['cls']) * BCEcls(pi[..., 5:], tclsm)  # class_conf loss
 
         # pos_weight = ft([gp[i] / min(gp) * 4.])
         # BCE = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        lconf += (k * h['conf']) * BCE(pi0[..., 4], tconf)  # obj_conf loss
+        lconf += (k * h['conf']) * BCEobj(pi0[..., 4], tconf)  # obj_conf loss
     loss = lxy + lwh + lconf + lcls
 
     return loss, torch.cat((lxy, lwh, lconf, lcls, loss)).detach()

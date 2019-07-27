@@ -23,8 +23,6 @@ def transform_annotation(x):
 
     boxes = boxes.reshape(-1, 4)
 
-    boxes[:, 2] += boxes[:, 0]
-    boxes[:, 3] += boxes[:, 1]
 
     # grab the classes
     category_ids = np.array([coco91_to_coco80(a["category_id"]) for a in x[1]]).reshape(-1, 1)
